@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3d5e">
+<title>DT Geo-Tagging</title>
+<style>
+  :root{
+    --bg:#f3f5f7; --card:#fff; --ink:#16212b; --mute:#5d6b78; --line:#dde3e8;
+    --brand:#0f3d5e; --brand2:#1a6a9a; --ok:#1e8a4c; --okbg:#e6f5ec; --warn:#b56a00; --warnbg:#fff3df;
+    --err:#b3261e; --errbg:#fde8e6; --chip:#eef2f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+  header{position:sticky;top:0;z-index:10;background:var(--brand);color:#fff;padding:12px 16px 0}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  .div{font-size:12px;opacity:.85;margin-top:2px}
+  .iconbtn{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
+  .tabs{display:flex;gap:4px;margin-top:10px}
+  .tab{flex:1;background:transparent;border:0;color:#cfe0ec;padding:10px 6px;font-size:14px;font-weight:600;border-bottom:3px solid transparent;cursor:pointer}
+  .tab.on{color:#fff;border-bottom-color:#7fd1ff}
+  .tab small{display:block;font-weight:500;font-size:11px;opacity:.85}
+  main{max-width:760px;margin:0 auto;padding:12px 16px 90px}
+  .tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .tools input,.tools select{flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff}
+  .stats{display:flex;gap:8px;margin-bottom:10px;font-size:13px;color:var(--mute);flex-wrap:wrap}
+  .stats b{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+  .head{display:flex;gap:10px;padding:12px 14px;cursor:pointer;align-items:flex-start}
+  .sno{min-width:38px;height:38px;border-radius:10px;background:var(--chip);display:grid;place-items:center;font-weight:700;font-size:13px}
+  .meta{flex:1;min-width:0}
+  .loc{font-weight:600;word-break:break-word}
+  .sub{font-size:12.5px;color:var(--mute);margin-top:2px}
+  .badge{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .b-ok{background:var(--okbg);color:var(--ok)} .b-part{background:var(--warnbg);color:var(--warn)} .b-no{background:var(--chip);color:var(--mute)}
+  .body{border-top:1px solid var(--line);padding:12px 14px;display:none}
+  .card.open .body{display:block}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;margin-bottom:12px}
+  .kv span:nth-child(odd){color:var(--mute)}
+  .grp{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+  .grp h3{margin:0 0 8px;font-size:13.5px;display:flex;justify-content:space-between;align-items:center}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  label{font-size:12px;color:var(--mute);display:block;margin-bottom:3px}
+  .inp{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;font-variant-numeric:tabular-nums}
+  .inp.dirty{border-color:var(--brand2);background:#f2f8fc}
+  .btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-gps{background:var(--brand2);color:#fff;flex:1}
+  .btn-ghost{background:var(--chip);color:var(--ink)}
+  .btn-save{background:var(--ok);color:#fff;width:100%;padding:13px;font-size:15px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .acc{font-size:12px;color:var(--mute);margin-top:6px}
+  .acc.good{color:var(--ok)} .acc.poor{color:var(--warn)}
+  a.map{font-size:12px;color:var(--brand2);text-decoration:none;font-weight:600}
+  .empty,.msg{text-align:center;color:var(--mute);padding:40px 10px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16212b;color:#fff;padding:11px 16px;border-radius:10px;font-size:14px;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+  .toast.show{opacity:1} .toast.err{background:var(--err)} .toast.ok{background:var(--ok)}
+  .queue{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px;display:none;justify-content:space-between;align-items:center;gap:8px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  dialog{border:0;border-radius:14px;padding:18px;max-width:340px;width:90vw}
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div>
+      <h1>DT Geo-Tagging</h1>
+      <div class="div" id="divName"></div>
+    </div>
+    <button class="iconbtn" id="reloadBtn" title="Reload from sheet">⟳ Reload</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-sheet="inc">DT INC<small>Capacity enhancement</small></button>
+    <button class="tab" data-sheet="new">NEW DT<small>New sub-station</small></button>
+  </div>
+</header>
+
+<main>
+  <div class="queue" id="queueBar"><span id="queueTxt"></span><button class="btn btn-ghost" id="syncBtn">Sync now</button></div>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Search location, feeder, DT code, S.No…">
+    <select id="f">
+      <option value="all">All</option>
+      <option value="pending">Pending</option>
+      <option value="done">Completed</option>
+    </select>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="list"><div class="msg"><span class="spin"></span> Loading…</div></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="keyDlg">
+  <form method="dialog">
+    <h3 style="margin:0 0 10px">Enter access key</h3>
+    <input class="inp" id="keyInp" type="password" autocomplete="current-password">
+    <div class="btns"><button class="btn btn-save" value="ok">Continue</button></div>
+  </form>
+</dialog>
+
+<script src="config.js"></script>
+<script>
+(() => {
+  const CFG = window.APP_CONFIG || {};
+  const API = CFG.API_URL;
+
+  // Field layout for each sheet (keys match Code.gs)
+  const SHEETS = {
+    inc: {
+      title: 'DT INC',
+      groups: [{ label: 'Existing DT', lat: 'exLat', lng: 'exLng', cols: 'L (Lat) / K (Long)' }],
+      info: [['DT Code','dtCode'],['Sub-Division','subDivision'],['Substation','substation'],['Feeder','feeder'],['Existing kVA','existingKva'],['Proposed kVA','proposedKva']]
+    },
+    new: {
+      title: 'NEW DT',
+      groups: [
+        { label: 'Existing DT', lat: 'exLat', lng: 'exLng', cols: 'I (Lat) / J (Long)' },
+        { label: 'New DT', lat: 'newLat', lng: 'newLng', cols: 'M (Lat) / N (Long)' }
+      ],
+      info: [['Sub-Division','subDivision'],['Substation','substation'],['Feeder','feeder'],['Existing kVA','existingKva'],['Proposed kVA','proposedKva']]
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+
+  let sheet = store.get('dtg_sheet', 'inc');
+  let rows = { inc: null, new: null };
+  let openRow = null;
+  let key = store.get('dtg_key', '');
+
+  $('#divName').textContent = 'Division: ' + (CFG.DIVISION || '');
+
+  /* ---------- API ---------- */
+  async function apiGet(params){
+    const u = new URL(API);
+    Object.entries({ ...params, key }).forEach(([k,v]) => u.searchParams.set(k, v));
+    const r = await fetch(u, { redirect: 'follow' });
+    return handleResp(await r.json());
+  }
+  async function apiPost(body){
+    // text/plain avoids a CORS preflight, which Apps Script cannot answer
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...body, key }), redirect: 'follow' });
+    return handleResp(await r.json());
+  }
+  function handleResp(j){
+    if (!j.ok) {
+      if (j.error === 'unauthorized') { key = ''; store.set('dtg_key',''); }
+      throw new Error(j.error || 'Request failed');
+    }
+    return j;
+  }
+  async function ensureKey(){
+    if (!CFG.REQUIRE_KEY || key) return;
+    await new Promise(res => {
+      const d = $('#keyDlg');
+      d.addEventListener('close', () => { key = $('#keyInp').value.trim(); store.set('dtg_key', key); res(); }, { once: true });
+      d.showModal();
+    });
+  }
+
+  /* ---------- Load & render ---------- */
+  async function load(force){
+    if (!API || API.includes('PASTE_')) {
+      $('#list').innerHTML = '<div class="msg">Set <b>API_URL</b> in <code>config.js</code> to your Apps Script web-app URL.</div>';
+      return;
+    }
+    if (rows[sheet] && !force) return render();
+    $('#list').innerHTML = '<div class="msg"><span class="spin"></span> Loading ' + SHEETS[sheet].title + '…</div>';
+    try {
+      await ensureKey();
+      const j = await apiGet({ action: 'list', sheet });
+      rows[sheet] = j.rows;
+      store.set('dtg_cache_' + sheet, j.rows);
+    } catch (e) {
+      const cached = store.get('dtg_cache_' + sheet, null);
+      if (cached) { rows[sheet] = cached; toast('Offline – showing last loaded data', 'err'); }
+      else { $('#list').innerHTML = '<div class="msg">Could not load: ' + esc(e.message) + '</div>'; return; }
+    }
+    render();
+  }
+
+  function status(r){
+    const g = SHEETS[sheet].groups, filled = g.flatMap(x => [x.lat, x.lng]).filter(k => String(r.geo[k]||'') !== '').length;
+    const total = g.length * 2;
+    return filled === total ? 'done' : filled ? 'part' : 'no';
+  }
+
+  function render(){
+    const data = rows[sheet] || [];
+    const q = $('#q').value.trim().toLowerCase(), f = $('#f').value;
+    const list = data.filter(r => {
+      const st = status(r);
+      if (f === 'pending' && st === 'done') return false;
+      if (f === 'done' && st !== 'done') return false;
+      if (!q) return true;
+      return Object.values(r.info).join(' ').toLowerCase().includes(q);
+    });
+    const done = data.filter(r => status(r) === 'done').length;
+    $('#stats').innerHTML = `<span>Total <b>${data.length}</b></span>·<span>Completed <b>${done}</b></span>·<span>Pending <b>${data.length-done}</b></span>`;
+    if (!data.length) { $('#list').innerHTML = `<div class="empty">No rows found for ${esc(CFG.DIVISION)} in ${SHEETS[sheet].title}.</div>`; return; }
+    if (!list.length) { $('#list').innerHTML = '<div class="empty">No matching rows.</div>'; return; }
+    $('#list').innerHTML = list.map(cardHTML).join('');
+  }
+
+  function cardHTML(r){
+    const S = SHEETS[sheet], st = status(r);
+    const badge = st === 'done' ? '<span class="badge b-ok">✓ Done</span>' : st === 'part' ? '<span class="badge b-part">Partial</span>' : '<span class="badge b-no">Pending</span>';
+    const info = S.info.filter(([,k]) => r.info[k]).map(([l,k]) => `<span>${l}</span><span>${esc(r.info[k])}</span>`).join('');
+    const groups = S.groups.map(g => {
+      const lat = r.geo[g.lat] || '', lng = r.geo[g.lng] || '';
+      const map = lat && lng ? `<a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${lat},${lng}">View on map ↗</a>` : '';
+      return `<div class="grp" data-g="${g.lat}">
+        <h3><span>${g.label} <span style="font-weight:400;color:var(--mute);font-size:11.5px">· ${g.cols}</span></span>${map}</h3>
+        <div class="row2">
+          <div><label>Latitude</label><input class="inp" inputmode="decimal" data-k="${g.lat}" value="${esc(lat)}" placeholder="e.g. 27.95"></div>
+          <div><label>Longitude</label><input class="inp" inputmode="decimal" data-k="${g.lng}" value="${esc(lng)}" placeholder="e.g. 80.20"></div>
+        </div>
+        <div class="btns"><button class="btn btn-gps" data-gps="${g.lat}|${g.lng}">📍 Capture current location</button></div>
+        <div class="acc" data-acc="${g.lat}"></div>
+      </div>`;
+    }).join('');
+    return `<div class="card ${openRow === r.row ? 'open' : ''}" data-row="${r.row}">
+      <div class="head"><div class="sno">${esc(r.info.sno || '')}</div>
+        <div class="meta"><div class="loc">${esc(r.info.location || '(no location text)')}</div>
+        <div class="sub">${esc([r.info.substation, r.info.feeder].filter(Boolean).join(' · '))} · Row ${r.row}</div></div>${badge}</div>
+      <div class="body"><div class="kv">${info}</div>${groups}
+        <button class="btn btn-save" data-save>Save to sheet</button></div>
+    </div>`;
+  }
+
+  /* ---------- GPS ---------- */
+  function capture(card, latK, lngK, btn){
+    if (!navigator.geolocation) return toast('Location not supported on this device', 'err');
+    const acc = card.querySelector(`[data-acc="${latK}"]`);
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Getting fix…';
+    let best = null, done = false;
+    const finish = () => {
+      if (done) return; done = true;
+      navigator.geolocation.clearWatch(id); clearTimeout(t);
+      btn.disabled = false; btn.textContent = '📍 Capture current location';
+      if (!best) { acc.textContent = 'Could not get location. Turn on GPS and allow location access.'; acc.className = 'acc poor'; return; }
+      const { latitude, longitude, accuracy } = best.coords;
+      setVal(card, latK, latitude.toFixed(6)); setVal(card, lngK, longitude.toFixed(6));
+      acc.textContent = `Accuracy ±${Math.round(accuracy)} m` + (accuracy > 30 ? ' — weak signal, move to open sky and capture again' : ' — good');
+      acc.className = 'acc ' + (accuracy <= 30 ? 'good' : 'poor');
+    };
+    // Watch for up to 15 s and keep the most accurate reading; stop early at ≤10 m
+    const id = navigator.geolocation.watchPosition(p => {
+      if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+      acc.textContent = `Improving… ±${Math.round(best.coords.accuracy)} m`; acc.className = 'acc';
+      if (best.coords.accuracy <= 10) finish();
+    }, err => {
+      if (err.code === 1) { done = true; navigator.geolocation.clearWatch(id); clearTimeout(t);
+        btn.disabled = false; btn.textContent = '📍 Capture current location';
+        acc.textContent = 'Location permission denied. Allow it in browser settings.'; acc.className = 'acc poor'; }
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+    const t = setTimeout(finish, 15000);
+  }
+  function setVal(card, k, v){ const i = card.querySelector(`[data-k="${k}"]`); i.value = v; i.classList.add('dirty'); }
+
+  /* ---------- Save (with offline queue) ---------- */
+  function validate(values){
+    for (const [k,v] of Object.entries(values)) {
+      if (v === '') continue;
+      const n = Number(v);
+      if (!isFinite(n)) return `${k}: not a number`;
+      const lat = /Lat$/.test(k);
+      if (lat && (n < 23.5 || n > 30.6)) return `Latitude ${n} looks wrong for UP (should be ~23.5–30.6). Lat/Long swapped?`;
+      if (!lat && (n < 77 || n > 84.8)) return `Longitude ${n} looks wrong for UP (should be ~77–84.8). Lat/Long swapped?`;
+    }
+    return null;
+  }
+  async function save(card, btn){
+    const r = rows[sheet].find(x => x.row === Number(card.dataset.row));
+    const values = {};
+    card.querySelectorAll('[data-k]').forEach(i => {
+      const v = i.value.trim();
+      if (v !== String(r.geo[i.dataset.k] || '')) values[i.dataset.k] = v;
+    });
+    if (!Object.keys(values).length) return toast('No changes to save');
+    const bad = validate(values); if (bad) return toast(bad, 'err');
+    // pair check: a group's lat and lng should both be present
+    for (const g of SHEETS[sheet].groups) {
+      const la = card.querySelector(`[data-k="${g.lat}"]`).value.trim(), ln = card.querySelector(`[data-k="${g.lng}"]`).value.trim();
+      if (!!la !== !!ln) return toast(`${g.label}: enter both Latitude and Longitude`, 'err');
+    }
+    const job = { action: 'save', sheet, row: r.row, sno: r.info.sno, values };
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving…';
+    try {
+      const j = await apiPost(job);
+      r.geo = j.geo; store.set('dtg_cache_' + sheet, rows[sheet]);
+      toast('Saved to sheet ✓', 'ok'); render();
+    } catch (e) {
+      if (isNetwork(e)) {
+        queuePush(job); Object.assign(r.geo, values); render();
+        toast('No network – saved on device, will sync later', 'err');
+      } else { toast(e.message, 'err'); btn.disabled = false; btn.textContent = 'Save to sheet'; }
+    }
+  }
+  const isNetwork = e => e instanceof TypeError || /fetch|network/i.test(e.message);
+  function queuePush(job){
+    const q = store.get('dtg_queue', []).filter(x => !(x.sheet === job.sheet && x.row === job.row));
+    q.push(job); store.set('dtg_queue', q); showQueue();
+  }
+  function showQueue(){
+    const q = store.get('dtg_queue', []);
+    $('#queueBar').style.display = q.length ? 'flex' : 'none';
+    $('#queueTxt').textContent = `${q.length} unsynced save${q.length>1?'s':''} on this device`;
+  }
+  async function syncQueue(){
+    let q = store.get('dtg_queue', []); if (!q.length) return;
+    const left = [];
+    for (const job of q) {
+      try { await apiPost(job); }
+      catch (e) { if (isNetwork(e)) left.push(job); else toast(`Row ${job.row}: ${e.message}`, 'err'); }
+    }
+    store.set('dtg_queue', left); showQueue();
+    if (left.length < q.length) { toast(`Synced ${q.length - left.length} save(s) ✓`, 'ok'); rows = { inc: null, new: null }; load(true); }
+  }
+
+  /* ---------- Events ---------- */
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('on', t.dataset.sheet === sheet);
+    t.onclick = () => {
+      sheet = t.dataset.sheet; store.set('dtg_sheet', sheet); openRow = null;
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t)); load();
+    };
+  });
+  $('#list').addEventListener('click', e => {
+    const card = e.target.closest('.card'); if (!card) return;
+    if (e.target.closest('.head')) { const n = Number(card.dataset.row); openRow = openRow === n ? null : n;
+      document.querySelectorAll('.card.open').forEach(c => c !== card && c.classList.remove('open')); card.classList.toggle('open'); return; }
+    const g = e.target.closest('[data-gps]'); if (g) { const [a,b] = g.dataset.gps.split('|'); return capture(card, a, b, g); }
+    const s = e.target.closest('[data-save]'); if (s) return save(card, s);
+  });
+  $('#list').addEventListener('input', e => { if (e.target.matches('[data-k]')) e.target.classList.add('dirty'); });
+  $('#q').addEventListener('input', render);
+  $('#f').addEventListener('change', render);
+  $('#reloadBtn').onclick = () => { rows[sheet] = null; load(true); };
+  $('#syncBtn').onclick = syncQueue;
+  window.addEventListener('online', syncQueue);
+
+  let tt; function toast(m, kind){ const el = $('#toast'); el.textContent = m; el.className = 'toast show ' + (kind||''); clearTimeout(tt); tt = setTimeout(() => el.className = 'toast', 3500); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  showQueue(); load(); if (navigator.onLine) syncQueue();
+})();
+</script>
+</body>
+</html>
