@@ -62,6 +62,16 @@
   @keyframes s{to{transform:rotate(360deg)}}
   dialog{border:0;border-radius:14px;padding:18px;max-width:340px;width:90vw}
   dialog::backdrop{background:rgba(0,0,0,.4)}
+  .mapdlg{padding:0;width:96vw;max-width:720px;height:88vh;max-height:760px}
+  .mapdlg[open]{display:flex;flex-direction:column}
+  .maphead{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .iconbtn.dark{background:var(--chip);color:var(--ink)}
+  #map{flex:1;min-height:200px}
+  .mapfoot{padding:10px 14px;border-top:1px solid var(--line)}
+  .paste{display:flex;gap:8px;margin-top:8px}
+  .paste .inp{flex:1;font-size:14px;padding:9px}
+  .hint{font-size:11.5px;color:var(--mute);margin-top:4px}
+  .btn-map{background:var(--chip);color:var(--brand);flex:1}
 </style>
 </head>
 <body>
@@ -82,6 +92,7 @@
 <main>
   <div class="queue" id="queueBar"><span id="queueTxt"></span><button class="btn btn-ghost" id="syncBtn">Sync now</button></div>
   <div class="tools">
+    <select id="sub" style="flex-basis:100%"><option value="">All substations</option></select>
     <input id="q" type="search" placeholder="Search location, feeder, DT code, S.No…">
     <select id="f">
       <option value="all">All</option>
@@ -103,6 +114,23 @@
   </form>
 </dialog>
 
+<dialog id="mapDlg" class="mapdlg">
+  <div class="maphead">
+    <b id="mapTitle">Pick location</b>
+    <button class="iconbtn dark" id="mapClose" type="button">✕</button>
+  </div>
+  <div id="map"></div>
+  <div class="mapfoot">
+    <div id="mapCoord" class="acc">Tap on the map to place the pin. Drag it to fine-tune.</div>
+    <div class="btns">
+      <button class="btn btn-ghost" id="mapMe" type="button">📍 My location</button>
+      <button class="btn btn-save" id="mapUse" type="button" style="flex:1;width:auto" disabled>Use this point</button>
+    </div>
+  </div>
+</dialog>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="config.js"></script>
 <script>
 (() => {
@@ -189,6 +217,21 @@
     render();
   }
 
+  /* ---------- Substation dropdown (column G) ---------- */
+  const normSub = s => String(s || '').replace(/\s+/g, ' ').trim().toUpperCase() || '(BLANK)';
+  let subFor = null;
+  function fillSubstations(data){
+    const sig = sheet + '|' + data.length + '|' + data.filter(r => status(r) === 'done').length;
+    if (subFor === sig) return;                          // rebuild only when sheet/data/progress changes
+    subFor = sig;
+    const counts = {};
+    data.forEach(r => { const k = normSub(r.info.substation); counts[k] = counts[k] || { n: 0, done: 0 }; counts[k].n++; if (status(r) === 'done') counts[k].done++; });
+    const saved = store.get('dtg_sub_' + sheet, '');
+    $('#sub').innerHTML = `<option value="">All substations (${Object.keys(counts).length})</option>` +
+      Object.keys(counts).sort().map(k => `<option value="${esc(k)}">${esc(k)} — ${counts[k].done}/${counts[k].n} done</option>`).join('');
+    $('#sub').value = counts[saved] ? saved : '';
+  }
+
   function status(r){
     const g = SHEETS[sheet].groups, filled = g.flatMap(x => [x.lat, x.lng]).filter(k => String(r.geo[k]||'') !== '').length;
     const total = g.length * 2;
@@ -197,16 +240,19 @@
 
   function render(){
     const data = rows[sheet] || [];
-    const q = $('#q').value.trim().toLowerCase(), f = $('#f').value;
+    fillSubstations(data);
+    const q = $('#q').value.trim().toLowerCase(), f = $('#f').value, ss = $('#sub').value;
     const list = data.filter(r => {
+      if (ss && normSub(r.info.substation) !== ss) return false;
       const st = status(r);
       if (f === 'pending' && st === 'done') return false;
       if (f === 'done' && st !== 'done') return false;
       if (!q) return true;
       return Object.values(r.info).join(' ').toLowerCase().includes(q);
     });
-    const done = data.filter(r => status(r) === 'done').length;
-    $('#stats').innerHTML = `<span>Total <b>${data.length}</b></span>·<span>Completed <b>${done}</b></span>·<span>Pending <b>${data.length-done}</b></span>`;
+    const scope = ss ? data.filter(r => normSub(r.info.substation) === ss) : data;
+    const done = scope.filter(r => status(r) === 'done').length;
+    $('#stats').innerHTML = `<span>${ss ? esc(ss) + ' — ' : ''}Total <b>${scope.length}</b></span>·<span>Completed <b>${done}</b></span>·<span>Pending <b>${scope.length-done}</b></span>`;
     if (!data.length) { $('#list').innerHTML = `<div class="empty">No rows found for ${esc(CFG.DIVISION)} in ${SHEETS[sheet].title}.</div>`; return; }
     if (!list.length) { $('#list').innerHTML = '<div class="empty">No matching rows.</div>'; return; }
     $('#list').innerHTML = list.map(cardHTML).join('');
@@ -225,7 +271,15 @@
           <div><label>Latitude</label><input class="inp" inputmode="decimal" data-k="${g.lat}" value="${esc(lat)}" placeholder="e.g. 27.95"></div>
           <div><label>Longitude</label><input class="inp" inputmode="decimal" data-k="${g.lng}" value="${esc(lng)}" placeholder="e.g. 80.20"></div>
         </div>
-        <div class="btns"><button class="btn btn-gps" data-gps="${g.lat}|${g.lng}">📍 Capture current location</button></div>
+        <div class="hint">Type values directly, or use one of the options below.</div>
+        <div class="btns">
+          <button class="btn btn-gps" data-gps="${g.lat}|${g.lng}">📍 Capture GPS</button>
+          <button class="btn btn-map" data-map="${g.lat}|${g.lng}|${g.label}">🗺️ Pick on map</button>
+        </div>
+        <div class="paste">
+          <input class="inp" data-paste="${g.lat}|${g.lng}" placeholder="Paste &quot;27.95, 80.20&quot; or a Google Maps link">
+          <button class="btn btn-ghost" data-apply="${g.lat}|${g.lng}">Apply</button>
+        </div>
         <div class="acc" data-acc="${g.lat}"></div>
       </div>`;
     }).join('');
@@ -247,7 +301,7 @@
     const finish = () => {
       if (done) return; done = true;
       navigator.geolocation.clearWatch(id); clearTimeout(t);
-      btn.disabled = false; btn.textContent = '📍 Capture current location';
+      btn.disabled = false; btn.textContent = '📍 Capture GPS';
       if (!best) { acc.textContent = 'Could not get location. Turn on GPS and allow location access.'; acc.className = 'acc poor'; return; }
       const { latitude, longitude, accuracy } = best.coords;
       setVal(card, latK, latitude.toFixed(6)); setVal(card, lngK, longitude.toFixed(6));
@@ -261,12 +315,106 @@
       if (best.coords.accuracy <= 10) finish();
     }, err => {
       if (err.code === 1) { done = true; navigator.geolocation.clearWatch(id); clearTimeout(t);
-        btn.disabled = false; btn.textContent = '📍 Capture current location';
+        btn.disabled = false; btn.textContent = '📍 Capture GPS';
         acc.textContent = 'Location permission denied. Allow it in browser settings.'; acc.className = 'acc poor'; }
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
     const t = setTimeout(finish, 15000);
   }
   function setVal(card, k, v){ const i = card.querySelector(`[data-k="${k}"]`); i.value = v; i.classList.add('dirty'); }
+
+  /* ---------- Manual: paste "lat, long" / Google Maps link ---------- */
+  function parseCoords(text){
+    const s = String(text || '').trim();
+    if (!s) return null;
+    const pats = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,                         // maps URL …/@27.9,80.2,17z
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,                     // maps URL data part
+      /[?&](?:q|query|ll|destination)=(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/,
+      /(-?\d{1,2}\.\d+)\s*[,;\s]\s*(-?\d{2,3}\.\d+)/        // plain "27.95, 80.20" or "27.95 80.20"
+    ];
+    for (const p of pats) {
+      const m = s.match(p);
+      if (m) {
+        let a = Number(m[1]), b = Number(m[2]);
+        if (a > 60 && b < 40) [a, b] = [b, a];               // user gave "long, lat" — swap
+        return { lat: a.toFixed(6), lng: b.toFixed(6) };
+      }
+    }
+    return null;
+  }
+  function applyPaste(card, latK, lngK){
+    const inp = card.querySelector(`[data-paste="${latK}|${lngK}"]`);
+    const c = parseCoords(inp.value);
+    const acc = card.querySelector(`[data-acc="${latK}"]`);
+    if (!c) {
+      acc.textContent = /goo\.gl|maps\.app/.test(inp.value)
+        ? 'Short links can\'t be read. Open the link, then copy the coordinates (long-press the pin in Google Maps).'
+        : 'Could not find coordinates. Use format: 27.951234, 80.201234';
+      acc.className = 'acc poor'; return;
+    }
+    setVal(card, latK, c.lat); setVal(card, lngK, c.lng);
+    inp.value = ''; acc.textContent = 'Entered manually — tap Save to sheet'; acc.className = 'acc good';
+  }
+
+  /* ---------- Manual: pick on map ---------- */
+  let map, marker, pickTarget = null;
+  function openMap(card, latK, lngK, label){
+    if (!window.L) return toast('Map needs internet. Type or paste the coordinates instead.', 'err');
+    pickTarget = { card, latK, lngK };
+    $('#mapTitle').textContent = 'Pick ' + label + ' location';
+    $('#mapUse').disabled = true;
+    $('#mapDlg').showModal();
+    if (!map) {
+      map = L.map('map', { zoomControl: true });
+      const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery © Esri' });
+      const street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+      sat.addTo(map);
+      L.control.layers({ Satellite: sat, Street: street }).addTo(map);
+      map.on('click', e => placePin(e.latlng));
+    }
+    // Start from existing value, else last pick, else Mohammadi area
+    const la = card.querySelector(`[data-k="${latK}"]`).value, ln = card.querySelector(`[data-k="${lngK}"]`).value;
+    const last = store.get('dtg_lastpin', null);
+    if (marker) { marker.remove(); marker = null; }
+    setTimeout(() => {
+      map.invalidateSize();
+      if (la && ln && isFinite(la) && isFinite(ln)) { map.setView([+la, +ln], 18); placePin(L.latLng(+la, +ln)); }
+      else if (last) map.setView(last, 16);
+      else map.setView([27.95, 80.2], 12);
+      $('#mapCoord').textContent = 'Tap on the map to place the pin. Drag it to fine-tune.';
+    }, 50);
+  }
+  function placePin(ll){
+    if (!marker) {
+      marker = L.marker(ll, { draggable: true }).addTo(map);
+      marker.on('dragend', () => showPin(marker.getLatLng()));
+    } else marker.setLatLng(ll);
+    showPin(ll);
+  }
+  function showPin(ll){
+    $('#mapCoord').textContent = `Lat ${ll.lat.toFixed(6)}, Long ${ll.lng.toFixed(6)}`;
+    $('#mapCoord').className = 'acc good';
+    $('#mapUse').disabled = false;
+  }
+  $('#mapUse').onclick = () => {
+    if (!marker || !pickTarget) return;
+    const ll = marker.getLatLng(), { card, latK, lngK } = pickTarget;
+    setVal(card, latK, ll.lat.toFixed(6)); setVal(card, lngK, ll.lng.toFixed(6));
+    const acc = card.querySelector(`[data-acc="${latK}"]`);
+    acc.textContent = 'Picked on map — tap Save to sheet'; acc.className = 'acc good';
+    store.set('dtg_lastpin', [ll.lat, ll.lng]);
+    $('#mapDlg').close();
+  };
+  $('#mapClose').onclick = () => $('#mapDlg').close();
+  $('#mapMe').onclick = () => {
+    if (!navigator.geolocation) return;
+    $('#mapMe').disabled = true;
+    navigator.geolocation.getCurrentPosition(p => {
+      $('#mapMe').disabled = false;
+      const ll = L.latLng(p.coords.latitude, p.coords.longitude);
+      map.setView(ll, 18); placePin(ll);
+    }, () => { $('#mapMe').disabled = false; toast('Could not get location', 'err'); }, { enableHighAccuracy: true, timeout: 15000 });
+  };
 
   /* ---------- Save (with offline queue) ---------- */
   function validate(values){
@@ -341,8 +489,23 @@
     if (e.target.closest('.head')) { const n = Number(card.dataset.row); openRow = openRow === n ? null : n;
       document.querySelectorAll('.card.open').forEach(c => c !== card && c.classList.remove('open')); card.classList.toggle('open'); return; }
     const g = e.target.closest('[data-gps]'); if (g) { const [a,b] = g.dataset.gps.split('|'); return capture(card, a, b, g); }
+    const m = e.target.closest('[data-map]'); if (m) { const [a,b,l] = m.dataset.map.split('|'); return openMap(card, a, b, l); }
+    const ap = e.target.closest('[data-apply]'); if (ap) { const [a,b] = ap.dataset.apply.split('|'); return applyPaste(card, a, b); }
     const s = e.target.closest('[data-save]'); if (s) return save(card, s);
   });
+  $('#list').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('[data-paste]')) { const [a,b] = e.target.dataset.paste.split('|'); applyPaste(e.target.closest('.card'), a, b); }
+  });
+  $('#list').addEventListener('paste', e => {
+    // Pasting a full "lat, long" straight into the Latitude box splits it into both fields
+    const i = e.target; if (!i.matches || !i.matches('[data-k]')) return;
+    const c = parseCoords((e.clipboardData || window.clipboardData).getData('text'));
+    if (!c) return;
+    const grp = SHEETS[sheet].groups.find(g => g.lat === i.dataset.k || g.lng === i.dataset.k);
+    e.preventDefault(); const card = i.closest('.card');
+    setVal(card, grp.lat, c.lat); setVal(card, grp.lng, c.lng);
+  });
+  $('#sub').addEventListener('change', () => { store.set('dtg_sub_' + sheet, $('#sub').value); openRow = null; render(); });
   $('#list').addEventListener('input', e => { if (e.target.matches('[data-k]')) e.target.classList.add('dirty'); });
   $('#q').addEventListener('input', render);
   $('#f').addEventListener('change', render);
