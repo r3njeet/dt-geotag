@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3d5e">
+<title>DT Geo-Tagging</title>
+<style>
+  :root{
+    --bg:#f3f5f7; --card:#fff; --ink:#16212b; --mute:#5d6b78; --line:#dde3e8;
+    --brand:#0f3d5e; --brand2:#1a6a9a; --ok:#1e8a4c; --okbg:#e6f5ec; --warn:#a35f00; --warnbg:#fff3df;
+    --err:#b3261e; --errbg:#fde8e6; --chip:#eef2f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans","Noto Sans Devanagari",sans-serif}
+  header{position:sticky;top:0;z-index:10;background:var(--brand);color:#fff;padding:12px 16px 0}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+  .div{font-size:12px;opacity:.85;margin-top:2px}
+  .hbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .iconbtn{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tabs{display:flex;gap:4px;margin-top:10px}
+  .tab{flex:1;background:transparent;border:0;color:#cfe0ec;padding:10px 6px;font-size:14px;font-weight:600;border-bottom:3px solid transparent;cursor:pointer}
+  .tab.on{color:#fff;border-bottom-color:#7fd1ff}
+  .tab small{display:block;font-weight:500;font-size:11px;opacity:.85}
+  main{max-width:760px;margin:0 auto;padding:12px 16px 90px}
+  .tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .tools input,.tools select{flex:1;min-width:140px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:15px;background:#fff;color:var(--ink)}
+  .stats{display:flex;gap:8px;margin-bottom:10px;font-size:13px;color:var(--mute);flex-wrap:wrap}
+  .stats b{color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+  .head{display:flex;gap:10px;padding:12px 14px;cursor:pointer;align-items:flex-start}
+  .sno{min-width:38px;height:38px;padding:0 4px;border-radius:10px;background:var(--chip);display:grid;place-items:center;font-weight:700;font-size:13px}
+  .meta{flex:1;min-width:0}
+  .loc{font-weight:600;word-break:break-word}
+  .sub{font-size:12.5px;color:var(--mute);margin-top:2px}
+  .badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .badge{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .b-ok{background:var(--okbg);color:var(--ok)} .b-part{background:var(--warnbg);color:var(--warn)} .b-no{background:var(--chip);color:var(--mute)}
+  .body{border-top:1px solid var(--line);padding:12px 14px;display:none}
+  .card.open .body{display:block}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;margin-bottom:12px}
+  .kv span:nth-child(odd){color:var(--mute)}
+  .grp{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+  .grp h3{margin:0 0 8px;font-size:13.5px}
+  .grp h3 small{font-weight:400;color:var(--mute);font-size:11.5px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  label{font-size:12px;color:var(--mute);display:block;margin-bottom:3px}
+  .inp{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink);background:#fff}
+  .inp.dirty{border-color:var(--brand2);background:#f2f8fc}
+  .methods{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+  .m{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 4px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.15}
+  .m .ic{font-size:18px}
+  .m small{font-weight:500;color:var(--mute);font-size:10.5px}
+  .m.on{border-color:var(--brand2);background:#f2f8fc}
+  .m:disabled{opacity:.55}
+  .hand{display:none;margin-top:8px;background:var(--chip);border-radius:10px;padding:8px}
+  .hand.on{display:block}
+  .paste{display:flex;gap:6px}
+  .paste .inp{flex:1;font-size:14px;padding:9px}
+  .hint{font-size:11.5px;color:var(--mute);margin-top:5px}
+  .btns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .btn{border:0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-ghost{background:var(--chip);color:var(--ink)}
+  .btn-sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+  .btn-swap{background:var(--warn);color:#fff}
+  .btn-save{background:var(--ok);color:#fff;width:100%;padding:13px;font-size:15px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .acc{font-size:12px;color:var(--mute);margin-top:6px}
+  .acc.good{color:var(--ok)} .acc.poor{color:var(--warn)}
+  .chk{font-size:12.5px;margin-top:6px;border-radius:8px;padding:0;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+  .chk:empty{display:none}
+  .chk.ok{color:var(--ok)}
+  .chk.warn{background:var(--warnbg);color:var(--warn);padding:8px 10px}
+  .chk.bad{background:var(--errbg);color:var(--err);padding:8px 10px}
+  a.mapl{color:var(--brand2);font-weight:600;text-decoration:none;white-space:nowrap}
+  .photos{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px}
+  .ph-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+  .ph-head small{color:var(--mute)}
+  .btn-photo{background:#fff;border:1px solid var(--brand2);color:var(--brand2)}
+  .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .thumbs:empty{display:none}
+  .th{width:96px;font-size:11px;color:var(--mute);text-align:center}
+  .th img{width:96px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--chip)}
+  .th .ph{width:96px;height:72px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;background:var(--chip);font-size:24px}
+  .th a{color:var(--brand2);text-decoration:none;font-weight:600}
+  .th .st-err{color:var(--err)}
+  .empty,.msg{text-align:center;color:var(--mute);padding:40px 10px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#16212b;color:#fff;padding:11px 16px;border-radius:10px;font-size:14px;max-width:92vw;box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+  .toast.show{opacity:1} .toast.err{background:var(--err)} .toast.ok{background:var(--ok)}
+  .queue{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px;display:none;justify-content:space-between;align-items:center;gap:8px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  dialog{border:0;border-radius:14px;padding:18px;max-width:360px;width:90vw;color:var(--ink)}
+  dialog::backdrop{background:rgba(0,0,0,.4)}
+  .viewer{max-width:96vw;width:auto;padding:8px}
+  .viewer img{max-width:92vw;max-height:80vh;display:block;border-radius:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div>
+      <h1>DT Geo-Tagging</h1>
+      <div class="div" id="divName"></div>
+    </div>
+    <div class="hbtns">
+      <button class="iconbtn" id="nameBtn" title="Surveyor name (printed on photos)">👤 Name</button>
+      <button class="iconbtn" id="xlsBtn" title="Download all responses as Excel">⬇ Excel</button>
+      <button class="iconbtn" id="reloadBtn" title="Reload from sheet">⟳</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-sheet="inc">DT INC<small>Capacity enhancement</small></button>
+    <button class="tab" data-sheet="new">NEW DT<small>New sub-station</small></button>
+  </div>
+</header>
+
+<main>
+  <div class="queue" id="queueBar"><span id="queueTxt"></span><button class="btn btn-ghost btn-sm" id="syncBtn">Sync now</button></div>
+  <div class="tools">
+    <select id="sub" style="flex-basis:100%"><option value="">All substations</option></select>
+    <input id="q" type="search" placeholder="Search location, feeder, DT code, S.No…">
+    <select id="f">
+      <option value="all">All</option>
+      <option value="pending">Pending</option>
+      <option value="done">Completed</option>
+    </select>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="list"><div class="msg"><span class="spin"></span> Loading…</div></div>
+</main>
+
+<!-- hidden pickers -->
+<input type="file" id="pickGeo" accept="image/jpeg,image/heic,image/heif,image/*" hidden>
+<input type="file" id="pickSite" accept="image/*" hidden>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="keyDlg">
+  <form method="dialog">
+    <h3 style="margin:0 0 10px">Enter access key</h3>
+    <input class="inp" id="keyInp" type="password" autocomplete="current-password">
+    <div class="btns"><button class="btn btn-save" value="ok">Continue</button></div>
+  </form>
+</dialog>
+
+<dialog id="nameDlg">
+  <form method="dialog">
+    <h3 style="margin:0 0 6px">Surveyor name</h3>
+    <div class="hint" style="margin:0 0 10px">Printed on every site photo and recorded with each save.</div>
+    <input class="inp" id="nameInp" autocomplete="name" placeholder="e.g. Ram Kumar, JE">
+    <div class="btns">
+      <button class="btn btn-ghost" value="cancel" style="flex:1">Cancel</button>
+      <button class="btn btn-save" value="ok" style="flex:2;width:auto">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="viewDlg" class="viewer">
+  <form method="dialog"><img id="viewImg" alt="Site photo"><div class="btns"><button class="btn btn-ghost" style="width:100%">Close</button></div></form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script>
+(() => {
+  const CFG = window.APP_CONFIG || {};
+  const API = CFG.API_URL;
+  const UP = { lat: [23.5, 30.6], lng: [77.0, 84.8] };        // Uttar Pradesh bounding box
+
+  // Field layout for each sheet (keys match Code.gs)
+  const SHEETS = {
+    inc: {
+      title: 'DT INC',
+      groups: [{ label: 'Existing DT', lat: 'exLat', lng: 'exLng', cols: 'L (Lat) / K (Long)' }],
+      info: [['DT Code','dtCode'],['Sub-Division','subDivision'],['Substation','substation'],['Feeder','feeder'],['Existing kVA','existingKva'],['Proposed kVA','proposedKva']]
+    },
+    new: {
+      title: 'NEW DT',
+      groups: [
+        { label: 'Existing DT', lat: 'exLat', lng: 'exLng', cols: 'I (Lat) / J (Long)' },
+        { label: 'New DT', lat: 'newLat', lng: 'newLng', cols: 'M (Lat) / N (Long)' }
+      ],
+      info: [['Sub-Division','subDivision'],['Substation','substation'],['Feeder','feeder'],['Existing kVA','existingKva'],['Proposed kVA','proposedKva'],['Location (PM Module)','location'],['Work Description','description']]
+    }
+  };
+
+  const $ = s => document.querySelector(s);
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+  };
+
+  let sheet = store.get('dtg_sheet', 'inc');
+  let rows = { inc: null, new: null };
+  let openRow = null;
+  let key = store.get('dtg_key', '');
+  let surveyor = store.get('dtg_name', '');
+  const srcMap = {};          // "sheet|row|latKey" -> {src:'GPS'|'Photo'|'Manual', acc}
+  const localPhotos = {};     // "sheet|row|group" -> [{id, dataUrl, url, status, err}]
+
+  $('#divName').textContent = 'Division: ' + (CFG.DIVISION || '');
+  const showName = () => { $('#nameBtn').textContent = '👤 ' + (surveyor || 'Name'); };
+  showName();
+
+  /* ---------- API ---------- */
+  async function apiGet(params){
+    const u = new URL(API);
+    Object.entries({ ...params, key }).forEach(([k,v]) => u.searchParams.set(k, v));
+    const r = await fetch(u, { redirect: 'follow' });
+    return handleResp(await r.json());
+  }
+  async function apiPost(body){
+    // text/plain avoids a CORS preflight, which Apps Script cannot answer
+    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...body, key }), redirect: 'follow' });
+    return handleResp(await r.json());
+  }
+  function handleResp(j){
+    if (!j.ok) {
+      if (j.error === 'unauthorized') { key = ''; store.set('dtg_key',''); }
+      throw new Error(j.error || 'Request failed');
+    }
+    return j;
+  }
+  async function ensureKey(){
+    if (!CFG.REQUIRE_KEY || key) return;
+    await new Promise(res => {
+      const d = $('#keyDlg');
+      d.addEventListener('close', () => { key = $('#keyInp').value.trim(); store.set('dtg_key', key); res(); }, { once: true });
+      d.showModal();
+    });
+  }
+  function askName(){
+    return new Promise(res => {
+      const d = $('#nameDlg'); $('#nameInp').value = surveyor;
+      d.addEventListener('close', () => {
+        if (d.returnValue === 'ok') { surveyor = $('#nameInp').value.trim(); store.set('dtg_name', surveyor); showName(); }
+        res(surveyor);
+      }, { once: true });
+      d.showModal(); setTimeout(() => $('#nameInp').focus(), 50);
+    });
+  }
+
+  /* ---------- Load & render ---------- */
+  async function load(force){
+    if (!API || API.includes('PASTE_')) {
+      $('#list').innerHTML = '<div class="msg">Set <b>API_URL</b> in <code>config.js</code> to your Apps Script web-app URL.</div>';
+      return;
+    }
+    if (rows[sheet] && !force) return render();
+    $('#list').innerHTML = '<div class="msg"><span class="spin"></span> Loading ' + SHEETS[sheet].title + '…</div>';
+    try {
+      await ensureKey();
+      const j = await apiGet({ action: 'list', sheet });
+      rows[sheet] = j.rows;
+      store.set('dtg_cache_' + sheet, j.rows);
+    } catch (e) {
+      const cached = store.get('dtg_cache_' + sheet, null);
+      if (cached) { rows[sheet] = cached; toast('Offline – showing last loaded data', 'err'); }
+      else { $('#list').innerHTML = '<div class="msg">Could not load: ' + esc(e.message) + '</div>'; return; }
+    }
+    render();
+  }
+
+  /* ---------- Substation dropdown (column G) ---------- */
+  const normSub = s => String(s || '').replace(/\s+/g, ' ').trim().toUpperCase() || '(BLANK)';
+  let subFor = null;
+  function fillSubstations(data){
+    const sig = sheet + '|' + data.length + '|' + data.filter(r => status(r) === 'done').length;
+    if (subFor === sig) return;
+    subFor = sig;
+    const counts = {};
+    data.forEach(r => { const k = normSub(r.info.substation); counts[k] = counts[k] || { n: 0, done: 0 }; counts[k].n++; if (status(r) === 'done') counts[k].done++; });
+    const saved = store.get('dtg_sub_' + sheet, '');
+    $('#sub').innerHTML = `<option value="">All substations (${Object.keys(counts).length})</option>` +
+      Object.keys(counts).sort().map(k => `<option value="${esc(k)}">${esc(k)} — ${counts[k].done}/${counts[k].n} done</option>`).join('');
+    $('#sub').value = counts[saved] ? saved : '';
+  }
+
+  function status(r){
+    const g = SHEETS[sheet].groups, filled = g.flatMap(x => [x.lat, x.lng]).filter(k => String(r.geo[k]||'') !== '').length;
+    const total = g.length * 2;
+    return filled === total ? 'done' : filled ? 'part' : 'no';
+  }
+
+  function render(){
+    const data = rows[sheet] || [];
+    fillSubstations(data);
+    const q = $('#q').value.trim().toLowerCase(), f = $('#f').value, ss = $('#sub').value;
+    const list = data.filter(r => {
+      if (ss && normSub(r.info.substation) !== ss) return false;
+      const st = status(r);
+      if (f === 'pending' && st === 'done') return false;
+      if (f === 'done' && st !== 'done') return false;
+      if (!q) return true;
+      return Object.values(r.info).join(' ').toLowerCase().includes(q);
+    });
+    const scope = ss ? data.filter(r => normSub(r.info.substation) === ss) : data;
+    const done = scope.filter(r => status(r) === 'done').length;
+    $('#stats').innerHTML = `<span>${ss ? esc(ss) + ' — ' : ''}Total <b>${scope.length}</b></span>·<span>Completed <b>${done}</b></span>·<span>Pending <b>${scope.length-done}</b></span>`;
+    if (!data.length) { $('#list').innerHTML = `<div class="empty">No rows found for ${esc(CFG.DIVISION)} in ${SHEETS[sheet].title}.</div>`; return; }
+    if (!list.length) { $('#list').innerHTML = '<div class="empty">No matching rows.</div>'; return; }
+    $('#list').innerHTML = list.map(cardHTML).join('');
+    // run the Lat/Long check on whatever is already filled
+    document.querySelectorAll('#list .card').forEach(card => SHEETS[sheet].groups.forEach(g => checkGroup(card, g)));
+  }
+
+  function cardHTML(r){
+    const S = SHEETS[sheet], st = status(r);
+    const badge = st === 'done' ? '<span class="badge b-ok">✓ Done</span>' : st === 'part' ? '<span class="badge b-part">Partial</span>' : '<span class="badge b-no">Pending</span>';
+    const nPh = (r.photos || []).length;
+    const phBadge = nPh ? `<span class="badge b-no">📷 ${nPh}</span>` : '';
+    const info = S.info.filter(([,k]) => r.info[k]).map(([l,k]) => `<span>${l}</span><span>${esc(r.info[k])}</span>`).join('');
+    const groups = S.groups.map(g => {
+      const lat = r.geo[g.lat] || '', lng = r.geo[g.lng] || '';
+      return `<div class="grp" data-grp="${g.lat}">
+        <h3>${g.label} <small>· ${g.cols}</small></h3>
+        <div class="row2">
+          <div><label>Latitude</label><input class="inp" inputmode="decimal" data-k="${g.lat}" value="${esc(lat)}" placeholder="e.g. 27.951234"></div>
+          <div><label>Longitude</label><input class="inp" inputmode="decimal" data-k="${g.lng}" value="${esc(lng)}" placeholder="e.g. 80.201234"></div>
+        </div>
+        <div class="methods">
+          <button class="m" data-gps="${g.lat}"><span class="ic">📍</span>GPS<small>at the site</small></button>
+          <button class="m" data-fromphoto="${g.lat}"><span class="ic">🖼️</span>From photo<small>geotagged</small></button>
+          <button class="m" data-hand="${g.lat}"><span class="ic">✍️</span>By hand<small>type / paste</small></button>
+        </div>
+        <div class="hand" data-handbox="${g.lat}">
+          <div class="paste">
+            <input class="inp" data-paste="${g.lat}" placeholder="Paste &quot;27.95, 80.20&quot; or a Google Maps link">
+            <button class="btn btn-ghost btn-sm" data-apply="${g.lat}">Apply</button>
+          </div>
+          <div class="hint">Or type directly in the Latitude / Longitude boxes above. Latitude in UP is ~23.5–30.6, Longitude ~77–84.8.</div>
+        </div>
+        <div class="acc" data-acc="${g.lat}"></div>
+        <div class="chk" data-chk="${g.lat}"></div>
+        <div class="photos">
+          <div class="ph-head"><span><b>📷 Site photo</b> <small>(optional)</small></span>
+            <button class="btn btn-photo btn-sm" data-photo="${g.lat}">Take / upload</button></div>
+          <div class="thumbs" data-thumbs="${g.lat}">${thumbsHTML(r, g)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="card ${openRow === r.row ? 'open' : ''}" data-row="${r.row}">
+      <div class="head"><div class="sno">${esc(r.info.sno || '')}</div>
+        <div class="meta"><div class="loc">${esc(r.info.location || '(no location text)')}</div>
+        <div class="sub">${esc([r.info.substation, r.info.feeder].filter(Boolean).join(' · '))} · Row ${r.row}</div></div>
+        <div class="badges">${badge}${phBadge}</div></div>
+      <div class="body"><div class="kv">${info}</div>${groups}
+        <button class="btn btn-save" data-save>Save to sheet</button></div>
+    </div>`;
+  }
+
+  const rowOf = card => rows[sheet].find(x => x.row === Number(card.dataset.row));
+  const grpOf = latK => SHEETS[sheet].groups.find(g => g.lat === latK);
+
+  /* ---------- Lat/Long check: swapped / outside UP / map link ---------- */
+  const inLat = n => n >= UP.lat[0] && n <= UP.lat[1];
+  const inLng = n => n >= UP.lng[0] && n <= UP.lng[1];
+  const mapLink = (la, ln) => `<a class="mapl" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${la},${ln}">मानचित्र पर देखें ↗</a>`;
+  function checkGroup(card, g){
+    const box = card.querySelector(`[data-chk="${g.lat}"]`); if (!box) return;
+    const sLa = card.querySelector(`[data-k="${g.lat}"]`).value.trim();
+    const sLn = card.querySelector(`[data-k="${g.lng}"]`).value.trim();
+    box.className = 'chk'; box.innerHTML = '';
+    if (!sLa && !sLn) return;
+    if (!sLa || !sLn) { box.className = 'chk warn'; box.innerHTML = `⚠ Enter both Latitude and Longitude`; return; }
+    const la = Number(sLa), ln = Number(sLn);
+    if (!isFinite(la) || !isFinite(ln)) { box.className = 'chk bad'; box.innerHTML = '✕ Only numbers allowed, e.g. 27.951234'; return; }
+    if (inLat(la) && inLng(ln)) {
+      box.className = 'chk ok'; box.innerHTML = `<span>✓ Inside Uttar Pradesh</span>${mapLink(la, ln)}`; return;
+    }
+    if (inLng(la) && inLat(ln)) {
+      box.className = 'chk warn';
+      box.innerHTML = `<span>⚠ Latitude and Longitude look swapped (Latitude should be ~23.5–30.6).</span>
+        <button class="btn btn-swap btn-sm" data-swap="${g.lat}">⇄ Swap</button>${mapLink(ln, la)}`;
+      return;
+    }
+    box.className = 'chk bad';
+    box.innerHTML = `<span>✕ Outside Uttar Pradesh (Lat 23.5–30.6, Long 77–84.8). It can't be saved like this.</span>${mapLink(la, ln)}`;
+  }
+  function setVal(card, k, v){ const i = card.querySelector(`[data-k="${k}"]`); i.value = v; i.classList.add('dirty'); }
+  function setPair(card, g, la, ln, src, acc){
+    setVal(card, g.lat, Number(la).toFixed(6)); setVal(card, g.lng, Number(ln).toFixed(6));
+    srcMap[`${sheet}|${card.dataset.row}|${g.lat}`] = { src, acc };
+    checkGroup(card, g);
+  }
+  function note(card, g, text, kind){
+    const a = card.querySelector(`[data-acc="${g.lat}"]`); a.textContent = text; a.className = 'acc ' + (kind || '');
+  }
+  function swap(card, g){
+    const a = card.querySelector(`[data-k="${g.lat}"]`), b = card.querySelector(`[data-k="${g.lng}"]`);
+    [a.value, b.value] = [b.value, a.value]; a.classList.add('dirty'); b.classList.add('dirty');
+    checkGroup(card, g); note(card, g, 'Swapped Latitude ⇄ Longitude', 'good');
+  }
+
+  /* ---------- 📍 GPS: keep the most accurate reading ---------- */
+  function bestFix(maxMs, onProgress){
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('Location not supported on this device'));
+      let best = null, done = false, id, t;
+      const finish = () => { if (done) return; done = true; navigator.geolocation.clearWatch(id); clearTimeout(t);
+        best ? resolve(best.coords) : reject(new Error('Could not get location. Turn on GPS and allow location access.')); };
+      id = navigator.geolocation.watchPosition(p => {
+        if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+        onProgress && onProgress(best.coords.accuracy);
+        if (best.coords.accuracy <= 10) finish();
+      }, err => {
+        if (err.code === 1) { done = true; navigator.geolocation.clearWatch(id); clearTimeout(t);
+          reject(new Error('Location permission denied. Allow it in browser settings.')); }
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: maxMs });
+      t = setTimeout(finish, maxMs);
+    });
+  }
+  async function useGPS(card, g, btn){
+    btn.disabled = true; btn.innerHTML = '<span class="ic"><span class="spin"></span></span>Getting fix<small>stay still</small>';
+    try {
+      const c = await bestFix(15000, a => note(card, g, `Improving… ±${Math.round(a)} m`));
+      setPair(card, g, c.latitude, c.longitude, 'GPS', Math.round(c.accuracy));
+      note(card, g, `📍 GPS · accuracy ±${Math.round(c.accuracy)} m` + (c.accuracy > 30 ? ' — weak signal, move to open sky and try again' : ' — good'),
+        c.accuracy <= 30 ? 'good' : 'poor');
+    } catch (e) { note(card, g, e.message, 'poor'); }
+    btn.disabled = false; btn.innerHTML = '<span class="ic">📍</span>GPS<small>at the site</small>';
+  }
+
+  /* ---------- 🖼️ From photo: read EXIF GPS on the phone ---------- */
+  async function readExif(file){
+    if (!window.exifr) throw new Error('Photo reader did not load. Check internet and retry.');
+    let x = null;
+    try { x = await exifr.parse(file, { gps: true, tiff: true, exif: true, translateValues: true, reviveValues: true }); } catch { x = null; }
+    const out = { taken: null, lat: null, lng: null, acc: null };
+    if (!x) return out;
+    if (isFinite(x.latitude) && isFinite(x.longitude) && !(x.latitude === 0 && x.longitude === 0)) { out.lat = x.latitude; out.lng = x.longitude; }
+    if (isFinite(x.GPSHPositioningError)) out.acc = Math.round(x.GPSHPositioningError);
+    const d = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
+    if (d instanceof Date && !isNaN(d)) out.taken = d;
+    return out;
+  }
+  async function fromPhoto(card, g, file){
+    note(card, g, 'Reading photo…');
+    try {
+      const x = await readExif(file);
+      if (x.lat == null) {
+        note(card, g, 'This photo has no location stored in it. Use a photo taken with the camera’s location tag ON. ' +
+          'On Android, choose it via “Files/Browse” rather than “Gallery/Photos”, which can remove the location.', 'poor');
+        return;
+      }
+      setPair(card, g, x.lat, x.lng, 'Photo', x.acc);
+      note(card, g, `🖼️ From photo${x.taken ? ' taken ' + fmtIST(x.taken) : ''}${x.acc ? ' · ±' + x.acc + ' m' : ''}`, 'good');
+    } catch (e) { note(card, g, e.message, 'poor'); }
+  }
+
+  /* ---------- ✍️ By hand: paste "lat, long" or a Google Maps link ---------- */
+  function parseCoords(text){
+    const s = String(text || '').trim();
+    if (!s) return null;
+    const pats = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+      /[?&](?:q|query|ll|destination)=(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/,
+      /(-?\d{1,3}\.\d+)\s*[,;\s]\s*(-?\d{1,3}\.\d+)/
+    ];
+    for (const p of pats) { const m = s.match(p); if (m) return { lat: Number(m[1]), lng: Number(m[2]) }; }
+    return null;
+  }
+  function applyPaste(card, g){
+    const inp = card.querySelector(`[data-paste="${g.lat}"]`);
+    const c = parseCoords(inp.value);
+    if (!c) {
+      note(card, g, /goo\.gl|maps\.app/.test(inp.value)
+        ? 'Short links can’t be read. Open the link, long-press the pin in Google Maps and copy the numbers.'
+        : 'Could not find coordinates. Use format: 27.951234, 80.201234', 'poor');
+      return;
+    }
+    // keep the order the user gave — the check below offers ⇄ Swap if it looks reversed
+    setPair(card, g, c.lat, c.lng, 'Manual');
+    inp.value = ''; note(card, g, '✍️ Entered by hand — check it on the map, then Save');
+  }
+
+  /* ---------- 📷 Site photo: stamp details onto the image, upload to Drive ---------- */
+  const IST = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const fmtIST = d => IST.format(d).replace(',', '').replace(/\//g, '-') + ' IST';
+  function distM(a, b, c, d){
+    const R = 6371000, r = x => x * Math.PI / 180;
+    const h = Math.sin(r(c-a)/2)**2 + Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  function loadImage(file){
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => { res(img); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+      img.onerror = () => rej(new Error('This image format can’t be opened here. Use a JPEG photo.'));
+      img.src = url;
+    });
+  }
+  function wrap(ctx, text, maxW){
+    const words = String(text).split(/\s+/), lines = []; let cur = '';
+    words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+    if (cur) lines.push(cur); return lines;
+  }
+  async function stampPhoto(file, lines){
+    const img = await loadImage(file);
+    const MAX = 1600, s = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    const W = Math.round(img.naturalWidth * s), H = Math.round(img.naturalHeight * s);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, W, H);
+    const fs = Math.max(16, Math.round(Math.min(W, H * 1.3) * 0.026)), lh = Math.round(fs * 1.32), pad = Math.round(fs * 0.7);
+    const font = (b) => `${b ? '700' : '500'} ${fs}px system-ui, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", sans-serif`;
+    // lay out (wrapping) first so the band fits
+    const laid = [];
+    lines.forEach((l, i) => { ctx.font = font(i === 0 || l.bold); wrap(ctx, l.text || l, W - pad * 2).forEach(t => laid.push({ t, b: i === 0 || l.bold, c: l.color })); });
+    const bandH = laid.length * lh + pad * 1.5;
+    ctx.fillStyle = 'rgba(0,0,0,0.62)'; ctx.fillRect(0, H - bandH, W, bandH);
+    ctx.fillStyle = '#ffd34d'; ctx.fillRect(0, H - bandH, Math.max(6, fs * 0.3), bandH);
+    ctx.textBaseline = 'top';
+    laid.forEach((l, i) => { ctx.font = font(l.b); ctx.fillStyle = l.c || '#fff'; ctx.fillText(l.t, pad, H - bandH + pad * 0.75 + i * lh); });
+    return cv.toDataURL('image/jpeg', 0.82);
+  }
+  async function sitePhoto(card, g, file){
+    const r = rowOf(card), id = 'p' + Date.now();
+    const lk = `${sheet}|${r.row}|${g.label}`;
+    const item = { id, status: 'working', msg: 'Reading…' };
+    (localPhotos[lk] = localPhotos[lk] || []).push(item); refreshThumbs(card, g);
+    try {
+      if (!surveyor) await askName();
+      // 1) location: photo's own EXIF → live GPS (if just taken) → values in the boxes
+      const x = await readExif(file).catch(() => ({}));
+      const fresh = Date.now() - (file.lastModified || 0) < 10 * 60 * 1000;
+      let loc = null;
+      if (x.lat != null) loc = { lat: x.lat, lng: x.lng, acc: x.acc, src: 'Photo GPS tag' };
+      else if (fresh) {
+        item.msg = 'Getting GPS…'; refreshThumbs(card, g);
+        try { const c = await bestFix(10000); loc = { lat: c.latitude, lng: c.longitude, acc: Math.round(c.accuracy), src: 'GPS at capture' }; } catch {}
+      }
+      const bLa = Number(card.querySelector(`[data-k="${g.lat}"]`).value), bLn = Number(card.querySelector(`[data-k="${g.lng}"]`).value);
+      const boxOk = inLat(bLa) && inLng(bLn);
+      if (!loc && boxOk) loc = { lat: bLa, lng: bLn, acc: null, src: 'Entered coordinates' };
+      if (!loc) throw new Error('No location for this photo. Fill Latitude/Longitude first (or allow GPS) — the photo must carry coordinates.');
+      // fill empty boxes from the photo location; warn if far from what is entered
+      let warnTxt = '';
+      if (!card.querySelector(`[data-k="${g.lat}"]`).value.trim() && inLat(loc.lat) && inLng(loc.lng)) {
+        setPair(card, g, loc.lat, loc.lng, loc.src.startsWith('Photo') ? 'Photo' : 'GPS', loc.acc);
+        note(card, g, `Filled from the site photo (${loc.src}${loc.acc ? ' ±' + loc.acc + ' m' : ''})`, 'good');
+      } else if (boxOk && loc.src !== 'Entered coordinates') {
+        const d = distM(bLa, bLn, loc.lat, loc.lng);
+        if (d > 50) warnTxt = `Photo location is ${d > 1000 ? (d/1000).toFixed(1) + ' km' : Math.round(d) + ' m'} away from the entered coordinates — please check.`;
+      }
+      // 2) stamp every detail onto the image
+      const taken = x.taken || (fresh ? new Date(file.lastModified) : new Date());
+      const i = r.info;
+      const kva = i.existingKva || i.proposedKva ? `${i.existingKva || '?'} → ${i.proposedKva || '?'} kVA` : '';
+      const lines = [
+        `DT GEO-TAG · ${CFG.DIVISION || ''}`,
+        `${SHEETS[sheet].title} · S.No ${i.sno || '-'} · Sheet Row ${r.row} · ${g.label}`,
+        [i.subDivision && 'Sub-Div: ' + i.subDivision, i.substation && 'Substation: ' + i.substation].filter(Boolean).join(' · '),
+        [i.feeder && 'Feeder: ' + i.feeder, i.dtCode && 'DT Code: ' + i.dtCode, kva].filter(Boolean).join(' · '),
+        i.location ? 'Location: ' + i.location : '',
+        { text: `Lat ${Number(loc.lat).toFixed(6)}   Long ${Number(loc.lng).toFixed(6)}   (${loc.src}${loc.acc ? ' ±' + loc.acc + ' m' : ''})`, bold: true, color: '#ffd34d' },
+        `${fmtIST(taken)} · Surveyor: ${surveyor || '-'}`
+      ].filter(Boolean);
+      item.msg = 'Stamping…'; refreshThumbs(card, g);
+      item.dataUrl = await stampPhoto(file, lines);
+      item.payload = { action: 'photo', sheet, row: r.row, sno: i.sno, group: g.label,
+        lat: Number(loc.lat).toFixed(6), lng: Number(loc.lng).toFixed(6), accuracy: loc.acc ?? '', locSource: loc.src,
+        takenAt: fmtIST(taken), surveyor, substation: i.substation, feeder: i.feeder, location: i.location,
+        data: item.dataUrl };
+      if (warnTxt) note(card, g, warnTxt, 'poor');
+      await uploadPhoto(card, g, r, item);
+    } catch (e) {
+      item.status = 'error'; item.msg = e.message; refreshThumbs(card, g); toast(e.message, 'err');
+    }
+  }
+  async function uploadPhoto(card, g, r, item){
+    item.status = 'working'; item.msg = 'Uploading…'; refreshThumbs(card, g);
+    try {
+      const j = await apiPost(item.payload);
+      item.status = 'done'; item.url = j.url; item.msg = 'Uploaded'; delete item.payload;
+      (r.photos = r.photos || []).push({ group: g.label, url: j.url, at: fmtIST(new Date()).slice(0, 16) });
+      store.set('dtg_cache_' + sheet, rows[sheet]);
+      toast('Photo uploaded ✓', 'ok');
+    } catch (e) {
+      if (isNetwork(e)) {
+        const ok = photoQueuePush(item.payload);
+        item.status = ok ? 'queued' : 'error';
+        item.msg = ok ? 'Saved on phone, will upload when online' : 'No network and no space on phone — tap Retry when online';
+      } else { item.status = 'error'; item.msg = e.message; }
+    }
+    refreshThumbs(card, g);
+  }
+  function thumbsHTML(r, g){
+    const server = (r.photos || []).filter(p => p.group === g.label);
+    const local = localPhotos[`${sheet}|${r.row}|${g.label}`] || [];
+    const localUrls = new Set(local.map(p => p.url).filter(Boolean));
+    return server.filter(p => !localUrls.has(p.url)).map(p =>
+      `<div class="th"><a href="${esc(p.url)}" target="_blank" rel="noopener"><div class="ph">📷</div>View ↗</a><div>${esc(p.at || '')}</div></div>`).join('') +
+      local.map(p => `<div class="th">
+        ${p.dataUrl ? `<img src="${p.dataUrl}" data-view="${p.id}" alt="">` : `<div class="ph">${p.status === 'error' ? '⚠️' : '<span class="spin"></span>'}</div>`}
+        <div class="${p.status === 'error' ? 'st-err' : ''}">${p.status === 'working' ? '<span class="spin"></span> ' : ''}${esc(p.status === 'done' ? '' : p.msg || '')}</div>
+        ${p.status === 'done' ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">✓ View ↗</a>` : ''}
+        ${p.status === 'error' && p.payload ? `<button class="btn btn-ghost btn-sm" data-retry="${p.id}">Retry</button>` : ''}
+      </div>`).join('');
+  }
+  function refreshThumbs(card, g){
+    const box = card.querySelector(`[data-thumbs="${g.lat}"]`); if (box) box.innerHTML = thumbsHTML(rowOf(card), g);
+  }
+  function photoQueuePush(payload){
+    const q = store.get('dtg_photoq', []); q.push(payload);
+    const ok = store.set('dtg_photoq', q); showQueue(); return ok;
+  }
+
+  /* ---------- Save (with offline queue) ---------- */
+  function validate(values){
+    for (const [k,v] of Object.entries(values)) {
+      if (v === '') continue;
+      const n = Number(v);
+      if (!isFinite(n)) return `${k}: not a number`;
+      const lat = /Lat$/.test(k);
+      if (lat && !inLat(n)) return `Latitude ${n} is outside UP (23.5–30.6). Use ⇄ Swap if Lat/Long are reversed.`;
+      if (!lat && !inLng(n)) return `Longitude ${n} is outside UP (77–84.8). Use ⇄ Swap if Lat/Long are reversed.`;
+    }
+    return null;
+  }
+  async function save(card, btn){
+    const r = rowOf(card);
+    const values = {};
+    card.querySelectorAll('[data-k]').forEach(i => {
+      const v = i.value.trim();
+      if (v !== String(r.geo[i.dataset.k] || '')) values[i.dataset.k] = v;
+    });
+    if (!Object.keys(values).length) return toast('No changes to save');
+    for (const g of SHEETS[sheet].groups) {
+      const la = card.querySelector(`[data-k="${g.lat}"]`).value.trim(), ln = card.querySelector(`[data-k="${g.lng}"]`).value.trim();
+      if (!!la !== !!ln) return toast(`${g.label}: enter both Latitude and Longitude`, 'err');
+    }
+    const bad = validate(values); if (bad) return toast(bad, 'err');
+    const source = SHEETS[sheet].groups.filter(g => g.lat in values || g.lng in values).map(g => {
+      const m = srcMap[`${sheet}|${r.row}|${g.lat}`] || { src: 'Manual' };
+      return `${g.label}: ${m.src}${m.acc ? ' ±' + m.acc + ' m' : ''}`;
+    }).join('; ');
+    const job = { action: 'save', sheet, row: r.row, sno: r.info.sno, values, source, surveyor };
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving…';
+    try {
+      const j = await apiPost(job);
+      r.geo = j.geo; store.set('dtg_cache_' + sheet, rows[sheet]);
+      toast('Saved to sheet ✓', 'ok'); render();
+    } catch (e) {
+      if (isNetwork(e)) {
+        queuePush(job); Object.assign(r.geo, values); render();
+        toast('No network – saved on phone, will sync later', 'err');
+      } else { toast(e.message, 'err'); btn.disabled = false; btn.textContent = 'Save to sheet'; }
+    }
+  }
+  const isNetwork = e => e instanceof TypeError || /fetch|network/i.test(e.message);
+  function queuePush(job){
+    const q = store.get('dtg_queue', []).filter(x => !(x.sheet === job.sheet && x.row === job.row));
+    q.push(job); store.set('dtg_queue', q); showQueue();
+  }
+  function showQueue(){
+    const n = store.get('dtg_queue', []).length, p = store.get('dtg_photoq', []).length;
+    $('#queueBar').style.display = n + p ? 'flex' : 'none';
+    $('#queueTxt').textContent = [n && `${n} save${n>1?'s':''}`, p && `${p} photo${p>1?'s':''}`].filter(Boolean).join(' + ') + ' waiting to upload';
+  }
+  let syncing = false;
+  async function syncQueue(){
+    if (syncing) return; syncing = true;
+    let sent = 0;
+    for (const [k, mk] of [['dtg_queue', 'save'], ['dtg_photoq', 'photo']]) {
+      const q = store.get(k, []), left = [];
+      for (const job of q) {
+        try { await apiPost(job); sent++; }
+        catch (e) { if (isNetwork(e)) left.push(job); else toast(`Row ${job.row} (${mk}): ${e.message}`, 'err'); }
+      }
+      store.set(k, left);
+    }
+    syncing = false; showQueue();
+    if (sent) { toast(`Uploaded ${sent} waiting item(s) ✓`, 'ok'); rows = { inc: null, new: null }; load(true); }
+  }
+
+  /* ---------- Events ---------- */
+  let pickTarget = null;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('on', t.dataset.sheet === sheet);
+    t.onclick = () => {
+      sheet = t.dataset.sheet; store.set('dtg_sheet', sheet); openRow = null;
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t)); load();
+    };
+  });
+  $('#list').addEventListener('click', e => {
+    const card = e.target.closest('.card'); if (!card) return;
+    if (e.target.closest('.head')) { const n = Number(card.dataset.row); openRow = openRow === n ? null : n;
+      document.querySelectorAll('.card.open').forEach(c => c !== card && c.classList.remove('open')); card.classList.toggle('open'); return; }
+    const b = e.target.closest('button,[data-view]'); if (!b) return;
+    const d = b.dataset;
+    if (d.gps) return useGPS(card, grpOf(d.gps), b);
+    if (d.fromphoto) { pickTarget = { card, g: grpOf(d.fromphoto) }; $('#pickGeo').value = ''; return $('#pickGeo').click(); }
+    if (d.photo) { pickTarget = { card, g: grpOf(d.photo) }; $('#pickSite').value = ''; return $('#pickSite').click(); }
+    if (d.hand) { const box = card.querySelector(`[data-handbox="${d.hand}"]`); box.classList.toggle('on'); b.classList.toggle('on');
+      if (box.classList.contains('on')) card.querySelector(`[data-k="${d.hand}"]`).focus(); return; }
+    if (d.apply) return applyPaste(card, grpOf(d.apply));
+    if (d.swap) return swap(card, grpOf(d.swap));
+    if (d.save !== undefined) return save(card, b);
+    if (d.retry || d.view) {
+      const g = grpOf(b.closest('.grp').dataset.grp), r = rowOf(card);
+      const it = (localPhotos[`${sheet}|${r.row}|${g.label}`] || []).find(p => p.id === (d.retry || d.view));
+      if (!it) return;
+      if (d.retry) return uploadPhoto(card, g, r, it);
+      $('#viewImg').src = it.dataUrl; $('#viewDlg').showModal();
+    }
+  });
+  $('#pickGeo').addEventListener('change', e => { const f = e.target.files[0]; if (f && pickTarget) fromPhoto(pickTarget.card, pickTarget.g, f); });
+  $('#pickSite').addEventListener('change', e => { const f = e.target.files[0]; if (f && pickTarget) sitePhoto(pickTarget.card, pickTarget.g, f); });
+  $('#list').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.matches('[data-paste]')) applyPaste(e.target.closest('.card'), grpOf(e.target.dataset.paste));
+  });
+  $('#list').addEventListener('input', e => {
+    if (!e.target.matches('[data-k]')) return;
+    e.target.classList.add('dirty');
+    const card = e.target.closest('.card'), g = SHEETS[sheet].groups.find(x => x.lat === e.target.dataset.k || x.lng === e.target.dataset.k);
+    srcMap[`${sheet}|${card.dataset.row}|${g.lat}`] = { src: 'Manual' };
+    checkGroup(card, g);
+  });
+  $('#list').addEventListener('paste', e => {
+    // Pasting "lat, long" straight into either box fills both
+    const i = e.target; if (!i.matches || !i.matches('[data-k]')) return;
+    const c = parseCoords((e.clipboardData || window.clipboardData).getData('text'));
+    if (!c) return;
+    e.preventDefault();
+    const card = i.closest('.card'), g = SHEETS[sheet].groups.find(x => x.lat === i.dataset.k || x.lng === i.dataset.k);
+    setPair(card, g, c.lat, c.lng, 'Manual');
+  });
+  $('#sub').addEventListener('change', () => { store.set('dtg_sub_' + sheet, $('#sub').value); openRow = null; render(); });
+  $('#q').addEventListener('input', render);
+  $('#f').addEventListener('change', render);
+  $('#nameBtn').onclick = askName;
+
+  /* ---------- Excel export (both sheets, all columns) ---------- */
+  async function downloadExcel(){
+    if (!window.XLSX) return toast('Excel library did not load. Check internet and retry.', 'err');
+    const btn = $('#xlsBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Preparing…';
+    try {
+      await ensureKey();
+      const j = await apiGet({ action: 'export' });
+      const wb = XLSX.utils.book_new();
+      [['inc', 'DT INC'], ['new', 'NEW DT']].forEach(([k, name]) => {
+        const d = j.sheets[k];
+        const geoIdx = d.geoCols.map(c => c - 1);
+        const header = ['Sheet Row', ...d.header, 'Geo Status', 'Location Source', 'Last Saved', 'Surveyor', 'Site Photos'];
+        const body = d.rows.map((r, i) => {
+          const filled = geoIdx.filter(c => r[c] !== '' && r[c] != null).length;
+          const st = filled === geoIdx.length ? 'Completed' : filled ? 'Partial' : 'Pending';
+          const ls = (d.lastSave || [])[i] || {};
+          return [d.sheetRows[i], ...r.map(toCell), st, ls.source || '', ls.at || '', ls.surveyor || '', (d.photos || [])[i] || ''];
+        });
+        const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+        // make photo links clickable (first link in the cell)
+        const pc = header.length - 1;
+        body.forEach((row, ri) => {
+          const m = String(row[pc] || '').match(/https?:\/\/\S+/);
+          if (m) ws[XLSX.utils.encode_cell({ r: ri + 1, c: pc })].l = { Target: m[0] };
+        });
+        ws['!cols'] = header.map((h, c) => ({ wch: Math.min(45, Math.max(8, String(h).length + 2,
+          ...body.slice(0, 200).map(r => String(r[c] ?? '').length + 1))) }));
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: body.length, c: header.length - 1 } }) };
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      });
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `DT_Geotag_${(CFG.DIVISION || 'Division').replace(/\s+/g, '_')}_${stamp}.xlsx`);
+      const n = j.sheets.inc.rows.length + j.sheets.new.rows.length;
+      toast(`Excel downloaded (${n} rows) ✓`, 'ok');
+    } catch (e) {
+      toast('Export failed: ' + e.message, 'err');
+    } finally {
+      btn.disabled = false; btn.textContent = '⬇ Excel';
+    }
+  }
+  function toCell(v){
+    if (typeof v === 'number') return v;
+    const s = String(v ?? '').trim();
+    if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(s) && s.length < 16) return Number(s);
+    return s;
+  }
+  $('#xlsBtn').onclick = downloadExcel;
+  $('#reloadBtn').onclick = () => { rows[sheet] = null; load(true); };
+  $('#syncBtn').onclick = syncQueue;
+  window.addEventListener('online', syncQueue);
+
+  let tt; function toast(m, kind){ const el = $('#toast'); el.textContent = m; el.className = 'toast show ' + (kind||''); clearTimeout(tt); tt = setTimeout(() => el.className = 'toast', 4000); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  showQueue(); load(); if (navigator.onLine) syncQueue();
+
+  // Direct download link: https://<user>.github.io/<repo>/#download
+  if (/download/i.test(location.hash + location.search)) {
+    toast('Preparing Excel download…');
+    window.addEventListener('load', () => setTimeout(downloadExcel, 300));
+  }
+})();
+</script>
+</body>
+</html>
